@@ -36,8 +36,10 @@
             </div>
           </div>
           <div class="card-content is-flex is-justify-content-center is-align-items-center">
-            <div id="weight-loss-since-start" class="title is-1"> 10 + </div>
-            <p class="title is-title">kg</p>
+            <div id="weight-loss-since-start" class="title is-1">
+              <span>10 +</span>
+              kg
+            </div>
           </div>
         </div>
       </div>
@@ -49,8 +51,10 @@
             </div>
           </div>
           <div class="card-content is-flex is-justify-content-center is-align-items-center">
-            <div id="weight-loss-m-o-m" class="title is-1 "> 10 + </div>
-            <p class="title is-title">kg</p>
+            <div id="weight-loss-m-o-m" class="title is-1 ">
+               <span>10+</span>
+               kg
+            </div>
           </div>
         </div>
       </div>
@@ -62,8 +66,10 @@
             </div>
           </div>
           <div class="card-content is-flex is-justify-content-center is-align-items-center">
-            <div id="weight-loss-w-o-w" class="title is-1 "> 10 + </div>
-            <p class="title is-title">kg</p>
+            <div id="weight-loss-w-o-w" class="title is-1 ">
+              <span>+10</span>
+              kg
+            </div>
           </div>
         </div>
       </div>
@@ -73,7 +79,6 @@
     </div>
   </div>
   <script>
-    const nodemailer = require("nodemailer"); 
     function postWeight() {
       event.preventDefault();
       fetch("http://0.0.0.0:3300/events", {
@@ -119,9 +124,9 @@
       document.getElementById("weight-loss-m-o-m").classList.add(monthOverMonthVariation > 0 ? "has-text-danger" : "has-text-success");
       document.getElementById("weight-loss-w-o-w").classList.add(weekOverWeekVariation > 0 ? "has-text-danger" : "has-text-success");
       
-      document.getElementById("weight-loss-since-start").innerHTML = getWeightVariationSinceStart(data).toFixed(1);
-      document.getElementById("weight-loss-m-o-m").innerHTML = getMonthOverMonthVariation(data).variation.toFixed(1);
-      document.getElementById("weight-loss-w-o-w").innerHTML = getWeekOverWeekVariation(data).variation.toFixed(1);
+      document.querySelector("#weight-loss-since-start span").innerHTML = getWeightVariationSinceStart(data).toFixed(1);
+      document.querySelector("#weight-loss-m-o-m span").innerHTML = getMonthOverMonthVariation(data).variation.toFixed(1);
+      document.querySelector("#weight-loss-w-o-w span").innerHTML = getWeekOverWeekVariation(data).variation.toFixed(1);
       document.querySelector('input[type="number"]').value = data[data.length - 1].weight;
     }
 
@@ -178,12 +183,9 @@
         });
 
         // Calculate the mean of the weights and the indices
-        console.log(weights);
         parsedWeights = weights.map((val) => parseFloat(val));
         let meanY = parsedWeights.reduce((a, b) => a + b, 0) / parsedWeights.length;
-        console.log(meanY);
         let meanX = parsedWeights.map((val, index) => index).reduce((a, b) => a + b, 0) / parsedWeights.length;
-        console.log(meanX);
 
         // Calculate the slope and y-intercept of the trend line
         let numerator = 0;
