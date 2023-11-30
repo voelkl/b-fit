@@ -1,0 +1,283 @@
+<!-- index.html -->
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Weight Tracker</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
+</head>
+<body>
+  <div class="container p-4">
+    <div class="hero bd-hero bd-is-basic">
+      <div class="hero-body">
+        <h1 class="title">Alfit</h1>
+        <h2 class="subtitle">tracking weight app</h2>
+      </div>
+    </div>
+    <form class="columns" onsubmit="postWeight()">
+      <div class="column is-three-fifths">
+        <label class="label">Date</label>
+        <input class="input" type="date" />
+      </div>
+      <div class="column">
+        <label class="label">Weight</label>
+        <input class="input" type="number" step="0.1" />
+      </div>
+      <div class="column  is-flex is-align-items-end">
+        <input class="button" type="submit" />
+      </div>
+    </form>
+    <div class="columns is-variable is-3">
+      <div class="column">
+        <div class="card">
+          <div class="card-title">
+            <div class="card-header-title">
+              Weight loss since start
+            </div>
+          </div>
+          <div class="card-content is-flex is-justify-content-center is-align-items-center">
+            <div id="weight-loss-since-start" class="title is-1"> 10 + </div>
+            <p class="title is-title">kg</p>
+          </div>
+        </div>
+      </div>
+      <div class="column">
+        <div class="card">
+          <div class="card-title">
+            <div class="card-header-title">
+              Weight loss month over month
+            </div>
+          </div>
+          <div class="card-content is-flex is-justify-content-center is-align-items-center">
+            <div id="weight-loss-m-o-m" class="title is-1 "> 10 + </div>
+            <p class="title is-title">kg</p>
+          </div>
+        </div>
+      </div>
+      <div class="column">
+        <div class="card">
+          <div class="card-title">
+            <div class="card-header-title">
+              Weight loss week over week
+            </div>
+          </div>
+          <div class="card-content is-flex is-justify-content-center is-align-items-center">
+            <div id="weight-loss-w-o-w" class="title is-1 "> 10 + </div>
+            <p class="title is-title">kg</p>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <canvas id="weightChart"></canvas>
+    </div>
+  </div>
+  <script>
+    const nodemailer = require("nodemailer"); 
+    function postWeight() {
+      event.preventDefault();
+      fetch("http://0.0.0.0:3300/events", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          date: event.target.querySelector('input[type="date"]').value,
+          weight: parseFloat(event.target.querySelector('input[type="number"]').value),
+        }),
+      })
+      .then(response => response.json())
+      .then((data) => {
+        destroyChart();
+        displayChart();
+      })
+      .catch((error) => {
+        console.error("Error:", error);
+      });
+    }
+    document.addEventListener("DOMContentLoaded", (event) => {
+      const dateInput = document.querySelector('input[type="date"]');
+      const today = new Date();
+      const day = String(today.getDate()).padStart(2, '0');
+      const month = String(today.getMonth() + 1).padStart(2, '0'); //January is 0!
+      const year = today.getFullYear();
+      dateInput.value = `${year}-${month}-${day}`;
+
+      displayChart();
+    });
+
+    function destroyChart() {
+      const chart = Chart.getChart("weightChart");
+      chart.destroy();
+    }
+    function setVariationCards(data) {
+      let weightVariationSinceStart = getWeightVariationSinceStart(data).toFixed(1);
+      let monthOverMonthVariation = getMonthOverMonthVariation(data).variation.toFixed(1);
+      let weekOverWeekVariation = getWeekOverWeekVariation(data).variation.toFixed(1);
+
+      document.getElementById("weight-loss-since-start").classList.add(weightVariationSinceStart > 0 ? "has-text-danger" : "has-text-success");
+      document.getElementById("weight-loss-m-o-m").classList.add(monthOverMonthVariation > 0 ? "has-text-danger" : "has-text-success");
+      document.getElementById("weight-loss-w-o-w").classList.add(weekOverWeekVariation > 0 ? "has-text-danger" : "has-text-success");
+      
+      document.getElementById("weight-loss-since-start").innerHTML = getWeightVariationSinceStart(data).toFixed(1);
+      document.getElementById("weight-loss-m-o-m").innerHTML = getMonthOverMonthVariation(data).variation.toFixed(1);
+      document.getElementById("weight-loss-w-o-w").innerHTML = getWeekOverWeekVariation(data).variation.toFixed(1);
+      document.querySelector('input[type="number"]').value = data[data.length - 1].weight;
+    }
+
+    function calculateSlope(x, y, meanX, meanY) {
+      let numerator = 0;
+      let denominator = 0;
+
+      for (let i = 0; i < x.length; i++) {
+          numerator += (x[i] - meanX) * (y[i] - meanY);
+          denominator += Math.pow(x[i] - meanX, 2);
+      }
+
+      return numerator / denominator;
+    }
+
+    function calculateYIntercept(meanX, meanY, slope) {
+      return meanY - (slope * meanX);
+    }
+
+    function displayChart() {
+      fetch("http://0.0.0.0:3300/events")
+      .then((response) => response.json())
+      .then((data) => {
+        data.sort((a, b) => new Date(a.date) - new Date(b.date));
+        setVariationCards(data);
+        const dates = data.map((row) => row.date);
+        const weights = data.map((row) => row.weight);
+        const ctx = document.getElementById("weightChart").getContext("2d");
+        
+        const chart = new Chart(ctx, {
+          type: "line",
+          options: {
+            responsive: true,
+            plugins: {
+              legend: {
+                position: 'top',
+              },
+              title: {
+                display: true,
+                text: 'Pesando la gordura'
+              }
+            }
+          },
+          data: {
+            labels: dates,
+            datasets: [{
+              label: "Weight",
+              data: weights,
+              fill: false,
+              borderColor: "rgb(75, 192, 192)",
+              tension: 0.1,
+            }],
+          },
+        });
+
+        // Calculate the mean of the weights and the indices
+        console.log(weights);
+        parsedWeights = weights.map((val) => parseFloat(val));
+        let meanY = parsedWeights.reduce((a, b) => a + b, 0) / parsedWeights.length;
+        console.log(meanY);
+        let meanX = parsedWeights.map((val, index) => index).reduce((a, b) => a + b, 0) / parsedWeights.length;
+        console.log(meanX);
+
+        // Calculate the slope and y-intercept of the trend line
+        let numerator = 0;
+        let denominator = 0;
+
+        for (let i = 0; i < parsedWeights.length; i++) {
+            numerator += (i - meanX) * (parsedWeights[i] - meanY);
+            denominator += (i - meanX) ** 2;
+        }
+
+        let slope = numerator / denominator;
+        let yIntercept = meanY - (slope * meanX);
+
+        // Generate the y-values for the trend line (y = mx + b)
+        let trendData = parsedWeights.map((val, index) => (slope * index) + yIntercept);
+
+        // Add the trend line to the chart
+        chart.data.datasets.push({
+            label: "Trend Line",
+            data: trendData,
+            fill: false,
+            borderColor: "rgb(255, 99, 132)",
+            tension: 0.1,
+        });
+
+        chart.update();
+      });
+    }
+
+    function getWeightVariationSinceStart(data) {
+      let startWeight = data[0].weight;
+      let lastWeight = data[data.length - 1].weight;
+      let weightVariationSinceStart = lastWeight - startWeight;
+      return weightVariationSinceStart;
+    }
+    function getMonthOverMonthVariation(data) {
+      // A helper function to extract the year and month from a date string
+      const getYearMonth = (dateString) => {
+        const date = new Date(dateString);
+        return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      };
+      let monthlyVariations = {};
+      data.forEach(entry => {
+        let yearMonth = getYearMonth(entry.date);
+        if (!monthlyVariations[yearMonth]) {
+            monthlyVariations[yearMonth] = [];
+        }
+        monthlyVariations[yearMonth].push(entry.weight);
+      });
+      let monthOverMonthVariation = {};
+      let previousMonthWeight = null;
+      for (let month in monthlyVariations) {
+        let weights = monthlyVariations[month];
+        let lastWeightThisMonth = weights[weights.length - 1];
+        if (previousMonthWeight !== null) {
+            monthOverMonthVariation[month] = lastWeightThisMonth - previousMonthWeight;
+        }
+        previousMonthWeight = lastWeightThisMonth;
+      }
+      // Convert the monthOverMonthVariation object into an array
+      let monthOverMonthVariationArray = Object.entries(monthOverMonthVariation).map(([month, variation]) => ({month, variation}));
+      return monthOverMonthVariationArray[monthOverMonthVariationArray.length - 1];
+    }
+
+    function getWeekOverWeekVariation (data) {
+      // A helper function to get the week number of the year from a date string
+      const getYearWeek = (dateString) => {
+        const date = new Date(dateString);
+        const firstDayOfYear = new Date(date.getFullYear(), 0, 1);
+        const pastDaysOfYear = (date - firstDayOfYear) / 86400000;
+        return Math.ceil((pastDaysOfYear + firstDayOfYear.getDay() + 1) / 7);
+      };
+      let weeklyVariations = {};
+      data.forEach(entry => {
+        let yearWeek = `${entry.date.slice(0, 4)}-W${getYearWeek(entry.date)}`;
+        if (!weeklyVariations[yearWeek]) {
+            weeklyVariations[yearWeek] = [];
+        }
+        weeklyVariations[yearWeek].push(entry.weight);
+      });
+      let weekOverWeekVariation = {};
+      let previousWeekWeight = null;
+      for (let week in weeklyVariations) {
+        let weights = weeklyVariations[week];
+        let lastWeightThisWeek = weights[weights.length - 1];
+        if (previousWeekWeight !== null) {
+            weekOverWeekVariation[week] = lastWeightThisWeek - previousWeekWeight;
+        }
+        previousWeekWeight = lastWeightThisWeek;
+      }
+      // Convert the weekOverWeekVariation object into an array
+      let weekOverWeekVariationArray = Object.entries(weekOverWeekVariation).map(([week, variation]) => ({week, variation}));
+      return weekOverWeekVariationArray[weekOverWeekVariationArray.length - 1];
+    }
+  </script>
+</body>
+</html>
