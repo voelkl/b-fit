@@ -13,8 +13,13 @@ new Elysia()
   .post(
     "/events",
     async ({ db, body }) => {
-      const id = (await db.addEvent(body)).id
-      return { success: true, id };
+      try {
+        const id = (await db.addEvent(body)).id
+        return { success: true, id };
+      } catch (e) {
+        console.log(e)
+        return { success: false };
+      }
     },
     {
       body: t.Object({
