@@ -1,6 +1,9 @@
 # Use an official Nginx image as a parent image
 FROM nginx:alpine
 
+# update the package list
+RUN apk update
+
 # Install apache2-utils to use htpasswd
 RUN apk add --no-cache apache2-utils
 
