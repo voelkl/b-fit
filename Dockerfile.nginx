@@ -1,0 +1,25 @@
+# Use an official Nginx image as a parent image
+FROM nginx:alpine
+
+# Install apache2-utils to use htpasswd
+RUN apk add --no-cache apache2-utils
+
+# Set environment variables for username and password
+# These can be overridden when building the image
+ARG USERNAME=admin
+ARG PASSWORD=password
+
+# Generate the .htpasswd file
+RUN htpasswd -cb /etc/nginx/.htpasswd $USERNAME $PASSWORD
+
+# Copy the static website files into the Nginx server
+COPY ./index.html /usr/share/nginx/html
+
+# Create Nginx configuration with basic auth for all locations
+COPY ./nginx.conf /etc/nginx/conf.d/default.conf
+
+# Expose port 443
+EXPOSE 443
+
+# Start Nginx when the container has provisioned
+CMD ["nginx", "-g", "daemon off;"]

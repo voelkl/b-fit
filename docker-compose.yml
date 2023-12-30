@@ -3,8 +3,20 @@ services:
   app:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.server
     volumes:
       - .:/app
     ports:
       - 3300:3300
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.nginx
+      args:
+        USERNAME: gordo
+        PASSWORD: FCkzTVRe4ETcB9fxrxVM5MSnuM3YizyE4x9uAbQC
+    ports:
+      - "4000:4000"
+    volumes:
+      - ./certs:/etc/letsencrypt
+      - ./certbot-data:/data/letsencrypt
