@@ -8,7 +8,6 @@ services:
       - .:/app
     ports:
       - 3300:3300
-    network_mode: "host"
   web:
     build:
       context: .
@@ -21,4 +20,4 @@ services:
     volumes:
       - ./certs:/etc/letsencrypt
       - ./certbot-data:/data/letsencrypt
-    network_mode: "host"
+
